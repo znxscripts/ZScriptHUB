@@ -1,1 +1,227 @@
-loadstring(game:HttpGet("https://pastefy.app/dprtPn5A/raw"))()
+-- KUNI MABANGIS 
+
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+local espEnabled = true
+local truePetMap = {}
+local autoRunning = false
+
+local petTable = {
+    ["Common Egg"] = { "Dog", "Bunny", "Golden Lab" },
+    ["Uncommon Egg"] = { "Chicken", "Black Bunny", "Cat", "Deer" },
+    ["Rare Egg"] = { "Pig", "Monkey", "Rooster", "Orange Tabby", "Spotted Deer" },
+    ["Legendary Egg"] = { "Cow", "Polar Bear", "Sea Otter", "Turtle", "Silver Monkey" },
+    ["Mythical Egg"] = { "Grey Mouse", "Brown Mouse", "Squirrel", "Red Fox", "Red Giant Ant" },
+    ["Bug Egg"] = { "Snail", "Caterpillar", "Giant Ant", "Praying Mantis", "Dragonfly" },
+    ["Bee Egg"] = { "Bee", "Honey Bee", "Bear Bee", "Petal Bee" },
+    ["Anti Bee Egg"] = { "Wasp", "Tarantula Hawk", "Moth", "Butterfly", "Disco Bee" },
+    ["Common Summer Egg"] = { "Starfish", "Seagull", "Crab" },
+    ["Rare Summer Egg"] = { "Sea Turtle", "Flamingo", "Toucan", "Seal", "Orangutan" },
+    ["Oasis Egg"] = { "Meerkat", "Sand Snake", "Axolotl" },
+    ["Paradise Egg"] = { "Ostrich", "Peacock", "Capybara", "Mimic Octopus"},
+    ["Dinosaur Egg"] = { "Raptor", "Triceratops", "Stegosaurus", "T-Rex", "Pterodactyl", "Brontosaurus" },
+    ["Primal Egg"] = { "Spinosaurus", "Ankylosaurus", "Dilophosaurus", "Parasaurolophus", "Iguanodon" },
+    ["Night Egg"] = { "Frog", "Hedgehog", "Mole", "Echo Frog", "Night Owl" },
+    ["Zen Egg"] = { "Shiba Inu", "Nihonzaru", "Tanuki", "Tanchozuru", "Kappa", "Kitsune" },
+    ["Gourmet Egg"] = { "Bagel Bunny", "Pancake Mole", "Sushi Bear", "Spaghetti Sloth", "French Fry Ferret" }
+}
+
+local divinePets = {
+    ["T-Rex"]=true, ["Golden Lab"]=true, ["Deer"]=true, ["Orange Tabby"]=true,
+    ["Dragonfly"]=true, ["Mimic Octopus"]=true, ["Raccoon"]=true, ["Disco Bee"]=true,
+    ["Butterfly"]=true, ["Queen Bee"]=true, ["French Fry Ferret"]=true,
+    ["Kitsune"]=true, ["Spinosaurus"]=true
+}
+
+local divineIcons = {
+    ["T-Rex"]="rbxassetid://7072724225", ["Golden Lab"]="rbxassetid://7072724228",
+    ["Deer"]="rbxassetid://7072724229", ["Orange Tabby"]="rbxassetid://7072724230",
+    ["Dragonfly"]="rbxassetid://7072724231", ["Mimic Octopus"]="rbxassetid://7072724226",
+    ["Raccoon"]="rbxassetid://7072724232", ["Disco Bee"]="rbxassetid://7072724227",
+    ["Butterfly"]="rbxassetid://7072724233", ["Queen Bee"]="rbxassetid://7072724234",
+    ["French Fry Ferret"]="rbxassetid://7072724235", ["Kitsune"]="rbxassetid://7072724236",
+    ["Spinosaurus"]="rbxassetid://7072724237"
+}
+
+local function applyESP(eggModel, petName)
+    if eggModel:FindFirstChild("PetBillboard") then eggModel.PetBillboard:Destroy() end
+    if eggModel:FindFirstChild("ESPHighlight") then eggModel.ESPHighlight:Destroy() end
+    if not espEnabled then return end
+    local base = eggModel:FindFirstChildWhichIsA("BasePart") or eggModel.PrimaryPart
+    if not base then return end
+    local billboard = Instance.new("BillboardGui", base)
+    billboard.Name="PetBillboard"
+    billboard.Size=UDim2.new(0,250,0,40)
+    billboard.AlwaysOnTop=true
+    billboard.StudsOffset=Vector3.new(0,4.5,0)
+    local label=Instance.new("TextLabel",billboard)
+    label.Size=UDim2.new(1,0,1,0)
+    label.BackgroundTransparency=1
+    label.Text=eggModel.Name.." | "..petName
+    label.TextScaled=true
+    label.Font=Enum.Font.FredokaOne
+    label.TextStrokeTransparency=0.3
+    label.TextColor3=Color3.new(1,1,1)
+    local highlight=Instance.new("Highlight",eggModel)
+    highlight.Name="ESPHighlight"
+    highlight.FillColor=Color3.fromRGB(255,200,0)
+    highlight.OutlineColor=Color3.fromRGB(255,255,255)
+    highlight.FillTransparency=0.7
+    highlight.DepthMode=Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.Adornee=eggModel
+end
+
+local function removeESP(eggModel)
+    if eggModel:FindFirstChild("PetBillboard") then eggModel.PetBillboard:Destroy() end
+    if eggModel:FindFirstChild("ESPHighlight") then eggModel.ESPHighlight:Destroy() end
+end
+
+local function getNearbyEggs(radius)
+    local eggs={}
+    local root=(player.Character or player.CharacterAdded:Wait()):WaitForChild("HumanoidRootPart")
+    for _,obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and petTable[obj.Name] then
+            local dist=(obj:GetModelCFrame().Position-root.Position).Magnitude
+            if dist<=radius then
+                if not truePetMap[obj] then
+                    truePetMap[obj]=petTable[obj.Name][math.random(1,#petTable[obj.Name])]
+                end
+                table.insert(eggs,obj)
+            end
+        end
+    end
+    return eggs
+end
+
+local function randomizeEggs()
+    local gui = player:WaitForChild("PlayerGui")
+    local container = gui:FindFirstChild("EquippedPets")
+    if not container then
+        container = Instance.new("Frame", gui)
+        container.Name="EquippedPets"
+        container.Position=UDim2.new(0.8,0,0.2,0)
+        container.Size=UDim2.new(0,180,0,200)
+    end
+    for _, child in ipairs(container:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    for _, egg in ipairs(getNearbyEggs(60)) do
+        local chosen = petTable[egg.Name][math.random(1,#petTable[egg.Name])]
+        truePetMap[egg] = chosen
+        applyESP(egg, chosen)
+        if divinePets[chosen] then
+            local weight = string.format("%.2f", math.random(50,200)/100)
+            local age = math.random(1,5)
+            local petUI = Instance.new("Frame", container)
+            petUI.Size = UDim2.new(1,-10,0,50)
+            petUI.Position = UDim2.new(0,5,0,#container:GetChildren()*55)
+            petUI.BackgroundColor3 = Color3.fromRGB(200,200,255)
+            Instance.new("UICorner", petUI)
+            local icon = Instance.new("ImageLabel", petUI)
+            icon.Size = UDim2.new(0,48,0,48)
+            icon.Position = UDim2.new(0,2,0,1)
+            icon.BackgroundTransparency=1
+            icon.Image = divineIcons[chosen] or ""
+            local nameLabel = Instance.new("TextLabel", petUI)
+            nameLabel.Size = UDim2.new(0.7,0,1,0)
+            nameLabel.Position = UDim2.new(0.3,0,0,0)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.Text = chosen.." | "..weight.." kg | Age "..age
+            nameLabel.TextScaled = true
+            nameLabel.Font = Enum.Font.FredokaOne
+            nameLabel.TextColor3 = Color3.fromRGB(255,255,255)
+        end
+    end
+end
+
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "PetRandomizerGUI"
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 240, 0, 200)
+frame.Position = UDim2.new(0, 25, 0, 100)
+frame.BackgroundColor3 = Color3.fromRGB(40,40,50)
+frame.Parent = gui
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,16)
+Instance.new("UIStroke", frame).Color=Color3.fromRGB(255,200,200)
+local title = Instance.new("TextLabel", frame)
+title.Size=UDim2.new(1,0,0,30)
+title.Text="🎲 Pet Randomizer"
+title.Font=Enum.Font.FredokaOne
+title.TextSize=20
+title.TextColor3=Color3.fromRGB(255,250,255)
+title.BackgroundTransparency=1
+local dragBtn = Instance.new("TextButton", title)
+dragBtn.Size=UDim2.new(1,0,1,0)
+dragBtn.Text=""
+dragBtn.BackgroundTransparency=1
+local dragging,offset=false,Vector2.zero
+dragBtn.MouseButton1Down:Connect(function()
+    dragging=true
+    offset=Vector2.new(mouse.X-frame.Position.X.Offset, mouse.Y-frame.Position.Y.Offset)
+end)
+UserInputService.InputEnded:Connect(function() dragging=false end)
+RunService.RenderStepped:Connect(function()
+    if dragging then
+        frame.Position=UDim2.new(0,mouse.X-offset.X,0,mouse.Y-offset.Y)
+    end
+end)
+local footer=Instance.new("TextLabel",frame)
+footer.Size=UDim2.new(1,0,0,20)
+footer.Position=UDim2.new(0,0,1,-20)
+footer.Text="👤 Tiktok: @yawiyawiyawiz1"
+footer.Font=Enum.Font.FredokaOne
+footer.TextSize=12
+footer.TextColor3=Color3.fromRGB(255,250,255)
+footer.BackgroundTransparency=1
+local pastelColors = {
+    Color3.fromRGB(255,176,224), Color3.fromRGB(187,222,251),
+    Color3.fromRGB(255,236,179), Color3.fromRGB(200,230,201),
+    Color3.fromRGB(225,190,231)
+}
+local nextColor=1
+local function createButton(text,yPos)
+    local btn=Instance.new("TextButton")
+    btn.Size=UDim2.new(1,-20,0,32)
+    btn.Position=UDim2.new(0,10,0,yPos)
+    btn.BackgroundColor3=pastelColors[nextColor]
+    btn.TextColor3=btn.BackgroundColor3:Lerp(Color3.new(1,1,1),0.85)
+    btn.Font=Enum.Font.FredokaOne
+    btn.TextSize=14
+    btn.Text=text
+    btn.Parent=frame
+    Instance.new("UICorner", btn).CornerRadius=UDim.new(0,8)
+    nextColor=nextColor+1
+    if nextColor>#pastelColors then nextColor=1 end
+    return btn
+end
+local randomBtn=createButton("🎲 Randomize Pets",36)
+randomBtn.MouseButton1Click:Connect(function()
+    randomizeEggs()
+end)
+local autoBtn=createButton("⚙️ Auto Randomize",72)
+autoBtn.MouseButton1Click:Connect(function()
+    autoRunning=not autoRunning
+    autoBtn.Text=autoRunning and "⚙️ Auto Randomize (ON)" or "⚙️ Auto Randomize (OFF)"
+    coroutine.wrap(function()
+        while autoRunning do
+            randomizeEggs()
+            wait(5)
+        end
+    end)()
+end)
+local toggleBtn=createButton("🔍 Show ESP",108)
+toggleBtn.MouseButton1Click:Connect(function()
+    espEnabled=not espEnabled
+    toggleBtn.Text=espEnabled and "🔍 Show ESP (ON)" or "❌ Close ESP (OFF)"
+    for _,egg in pairs(getNearbyEggs(60)) do
+        if espEnabled then applyESP(egg,truePetMap[egg]) else removeESP(egg) end
+    end
+end)
+
